@@ -80,7 +80,7 @@
 			<scope>test</scope>
 		</dependency>
 		
-		<!--  JUNIT DEPENDENCY FOR TESTING -->
+		<!--  JSOUP HTML PARSER -->
 		<dependency>
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
