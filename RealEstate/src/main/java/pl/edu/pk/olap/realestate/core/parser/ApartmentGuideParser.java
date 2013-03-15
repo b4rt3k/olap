@@ -19,13 +19,14 @@ public class ApartmentGuideParser implements HttpParser {
 
 	@Autowired
 	private ConfigReader reader;
+	private int timeout;
 
 	@Override
 	public void parse() {
+		timeout = Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS));
 		Document doc = null;
 		try {
-			doc = Jsoup.connect(reader.getProperty(ConfigurationConstants.APARTMENTGUIDE_URL))
-					.timeout(Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS))).userAgent("Mozilla").get();
+			doc = Jsoup.connect(reader.getProperty(ConfigurationConstants.APARTMENTGUIDE_URL)).timeout(timeout).userAgent("Mozilla").get();
 			Elements links = doc.select("ul.browse_links>li>a[href]");
 			for (Element link : links) {
 				parseState(link.attr("abs:href"), link.text());
@@ -41,8 +42,7 @@ public class ApartmentGuideParser implements HttpParser {
 		System.out.println("------------------------------------------");
 		Document doc = null;
 		try {
-			doc = Jsoup.connect(url).timeout(Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS)))
-					.userAgent("Mozilla").get();
+			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Elements links = doc.select(".padding_box ul>li>a[href]");
 			for (Element link : links) {
 				parseCity(link.attr("abs:href"), link.text());
@@ -57,8 +57,7 @@ public class ApartmentGuideParser implements HttpParser {
 		int pages = 1;
 		Document doc = null;
 		try {
-			doc = Jsoup.connect(url).timeout(Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS)))
-					.userAgent("Mozilla").get();
+			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Element elem = doc.select("div.pagination>ol>li").last().select("a").first();
 			pages = Integer.parseInt(new URL(elem.attr("abs:href")).getQuery().split("=")[1]);
 		} catch (Exception e) {
@@ -73,8 +72,7 @@ public class ApartmentGuideParser implements HttpParser {
 	private void parsePage(String url) {
 		Document doc = null;
 		try {
-			doc = Jsoup.connect(url).timeout(Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS)))
-					.userAgent("Mozilla").get();
+			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Elements items = doc.select("div.result");
 			for (Element item : items) {
 				System.out.println("	Name: " + item.select("div.column2>h3>a[href]").text());
