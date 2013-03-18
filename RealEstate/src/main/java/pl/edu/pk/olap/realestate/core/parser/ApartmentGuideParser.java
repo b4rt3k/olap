@@ -75,11 +75,12 @@ public class ApartmentGuideParser implements HttpParser {
 			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Elements items = doc.select("div.result");
 			for (Element item : items) {
-				System.out.println("	Name: " + item.select("div.column2>h3>a[href]").text());
-				System.out.println("	Reigon: " + item.select("div.column2>ul>li.display_address>span[itemprop=addressRegion]").text());
-				System.out.println("	Locality: " + item.select("div.column2>ul>li.display_address>span[itemprop=addressLocality]").text());
-				System.out.println("	Postal Code: " + item.select("div.column2>ul>li.display_address>span[itemprop=postalCode]").text());
-				System.out.println("	Phone Number: " + item.select("ul.listing_controls>li.phone_number.large.non_sem_number").text());
+				System.out.println("--Name: " + item.select("div.column2>h3>a[href]").text());
+				System.out.println("--Reigon: " + item.select("div.column2>ul>li.display_address>span[itemprop=addressRegion]").text());
+				System.out.println("--Locality: " + item.select("div.column2>ul>li.display_address>span[itemprop=addressLocality]").text());
+				System.out.println("--Postal Code: " + item.select("div.column2>ul>li.display_address>span[itemprop=postalCode]").text());
+				System.out.println("--Phone Number: " + item.select("ul.listing_controls>li.phone_number.large.non_sem_number").text());
+				parseItem(item.select("div.column2>h3>a[href]").attr("abs:href"));
 				System.out.println();
 			}
 		} catch (Exception e) {
@@ -88,6 +89,26 @@ public class ApartmentGuideParser implements HttpParser {
 	}
 
 	private void parseItem(String url) {
-
+		Document doc = null;
+		try {
+			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
+			Elements elems = doc.select("div#floorplans_and_pricing_tab table.unit_detail tr").last().select("td");
+			System.out.println("--Style: " + elems.eq(0).text());
+			System.out.println("--Beds: " + elems.eq(1).text());
+			System.out.println("--Bathrooms: " + elems.eq(2).text());
+			System.out.println("--Ares [Sq. Ft.]: " + elems.eq(4).text());
+			System.out.println("--Price: " + elems.eq(5).text());
+			System.out.println("--Term: " + elems.eq(6).text());
+			System.out.println("--Deposit: " + elems.eq(7).text());
+			Element description = doc.select("div#details_description #listing_description").first();
+			System.out.println("--Description: " + description.text());
+			System.out.println("--Features: ");
+			Elements features = doc.select("div#apartment_features_tab ul.features>li");
+			for (Element feature : features) {
+				System.out.println("----" + feature.text());
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
