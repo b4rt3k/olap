@@ -4,14 +4,14 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 import pl.edu.pk.olap.realestate.config.AppConfig;
 import pl.edu.pk.olap.realestate.config.AppContext;
-import pl.edu.pk.olap.realestate.core.parser.ApartmentGuideParser;
 import pl.edu.pk.olap.realestate.core.parser.HttpParser;
+import pl.edu.pk.olap.realestate.core.parser.RentalsParser;
 
 public class TestClass {
 
 	public static void main(String[] args) {
 		AnnotationConfigApplicationContext cntxt = new AnnotationConfigApplicationContext(AppConfig.class, AppContext.class);
-		final HttpParser parser = AppContext.get(ApartmentGuideParser.class);
+		final HttpParser parser = AppContext.get(RentalsParser.class);
 		new Thread(new Runnable() {
 
 			@Override

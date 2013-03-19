@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import pl.edu.pk.olap.realestate.core.parser.ApartmentGuideParser;
+import pl.edu.pk.olap.realestate.core.parser.RentalsParser;
 
 /**
  * @author b4rt3k
@@ -20,5 +21,10 @@ public class AppConfig {
 	@Bean
 	public ApartmentGuideParser apartmentGuideParser() {
 		return new ApartmentGuideParser();
+	}
+
+	@Bean
+	public RentalsParser rentalsParser() {
+		return new RentalsParser();
 	}
 }
