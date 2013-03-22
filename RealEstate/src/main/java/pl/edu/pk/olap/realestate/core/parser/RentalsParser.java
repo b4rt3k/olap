@@ -1,192 +1,314 @@
 package pl.edu.pk.olap.realestate.core.parser;
 
+import java.util.Map;
+
 import org.apache.log4j.Logger;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import pl.edu.pk.olap.realestate.config.ConfigReader;
 import pl.edu.pk.olap.realestate.config.ConfigurationConstants;
+import pl.edu.pk.olap.realestate.util.StatesAbbreviationsMap;
 
 // jeœli wszystkie parsery bêd¹ mia³y podobn¹ strukturê, to zrobiæ klasê abstrakcyjn¹, a w podklasach podmieniaæ tylko selektory!!!
-// trzeba te¿ zrobiæ mapê skrótów nazw stanów na nazwy pe³ne
 // w parsePage i parseItem zprawdzac wszystkie selektory czy znajduj¹ odpowiednie elementy na stronie
 // ujednoliciæ wielkoœæ znakó (tolowercase)
 // regu³y dla price i deposit zrobiæ w metodzie (klasy abstract parser albo xxxUtils, bo liczbowy format trzeba ujednoliciæ NumberFormat)
 // wszystko trimowaæ
 // problem z dolarem przed cen¹ i np 400 i 400.00 (wszystkie liczby maj¹ problem z kropk¹) oraz np $400-$600, czyli pauza
+// cenê liczyæ œredni¹
+// poprawiæ wyci¹ganie street z rentals
+// zrobiæ metodê która zamienia puste stringi na nulle
 /**
  * 
  * @author b4rt3k
  * 
  */
-public class RentalsParser implements HttpParser {
+public class RentalsParser extends AbstractParser {
 
-	@Autowired
-	private ConfigReader reader;
-	private int timeout;
 	private static Logger log = Logger.getLogger(RentalsParser.class);
+	private static Map<String, String> statesMap = new StatesAbbreviationsMap();
+	private static final String TD = "td";
 
 	@Override
-	public void parse() {
-		log.info("Rentals parsing started");
-		timeout = Integer.parseInt(reader.getProperty(ConfigurationConstants.HTTP_CONNECTION_TIMEOUT_MILLIS));
-		Document doc = null;
-		try {
-			doc = Jsoup.connect(reader.getProperty(ConfigurationConstants.RENTALS_URL)).timeout(timeout).userAgent("Mozilla").get();
-			Elements links = doc.select("div#search_locations_popup ul.search_locations_states>li>a[href]");
-			if (links.size() > 0) {
-				log.info("States links found.");
-				for (Element link : links) {
-					parseState(link.attr("abs:href"), link.text());
-				}
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			e.printStackTrace();
-		}
+	public Logger getLogger() {
+		return RentalsParser.log;
 	}
 
-	private void parseState(String url, String stateName) {
-		log.info("Parsing state: " + stateName);
-		System.out.println("------------------------------------------");
-		System.out.println(stateName);
-		System.out.println("------------------------------------------");
-		Document doc = null;
-		try {
-			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
-			Elements links = doc.select("div.content div#state_links>ul>li>a[href]");
-			if (links.size() > 0) {
-				log.info("Cities links found.");
-				for (Element link : links) {
-					parseCity(link.attr("abs:href"), link.text());
-				}
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			e.printStackTrace();
-		}
-
+	@Override
+	public String getPortalName() {
+		return "Rentals";
 	}
 
-	private void parseCity(String url, String cityName) {
-		log.info("Parsing city: " + cityName);
-		int pages = 1;
-		boolean resultsFound = false;
-		Document doc = null;
-		try {
-			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
-			Element elem = doc.select("div#search_results_container div.pagination>h2").first();
-			if (elem != null) {
-				resultsFound = true;
-				String text = elem.text().trim();
-				pages = Integer.parseInt(text.substring(text.lastIndexOf(" ") + 1, text.length()));
-				log.info("Pages count found: " + pages);
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			e.printStackTrace();
-		}
-
-		if (resultsFound) {
-			for (int i = 0; i < pages; i++) {
-				parsePage(url + "?page=" + (i + 1), cityName, (i + 1));
-			}
-		}
+	@Override
+	public String getUrl() {
+		return ConfigurationConstants.RENTALS_URL;
 	}
 
-	private void parsePage(String url, String city, int page) {
-		log.info("Parsing page: " + page + ", city: " + city);
-		Document doc = null;
-		try {
-			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
-			Elements items = doc.select("div#search_results_container div#search_results div.result");
-			int index = 0;
-			if (items.size() > 0) {
-				log.info("Apartments base info found.");
-				for (Element item : items) {
-					System.out.println("--Name: " + item.select("div.listing_details .listing_name>a[href]").text());
-					String[] location = item.select("div.listing_details .listing_location").text().split(",");
-					String[] subLoc = location[1].trim().split(" ");
-					System.out.println("--Reigon: " + subLoc[0]);
-					System.out.println("--Locality: " + location[0]);
-					System.out.println("--Postal Code: " + subLoc[1]);
-					System.out.println("--Phone Number: " + item.select("div.listing_details .listing_phone").text());
-					parseItem(item.select("div.listing_details .listing_name>a[href]").attr("abs:href"), index++);
-					System.out.println();
-				}
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			e.printStackTrace();
-		}
+	@Override
+	public Elements statesLinksSelector(Element root) {
+		return root.select("div#search_locations_popup ul.search_locations_states>li>a[href]");
 	}
 
-	private void parseItem(String url, int index) {
-		log.info("Parsing item: " + index);
-		Document doc = null;
-		try {
-			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
-			Element street = doc.select("div.content #summary_address").first();
-			System.out.println("--Street: " + street.text().split("\\|")[0].trim());
-			Element lastRow = doc.select("table.floorPlanTable tr").last();
-			if (lastRow != null) {
-				// details may be in table
-				log.info("Apartment details found (floorplan table).");
-				Elements elems = lastRow.select("td");
-				System.out.println("--Style: " + elems.eq(0).text());
-				System.out.println("--Beds: " + elems.eq(1).text());
-				System.out.println("--Bathrooms: " + elems.eq(2).text());
-				System.out.println("--Area [Sq. Ft.]: " + elems.eq(4).text().replaceAll("\\D", ""));
-				System.out.println("--Price: " + elems.eq(5).text().replaceAll("[^\\$|\\.|\\d|-]", ""));
-				System.out.println("--Term: " + elems.eq(6).text());
-				System.out.println("--Deposit: " + elems.eq(7).text().replaceAll("[^\\$|\\.|\\d]", "").trim());
+	@Override
+	public Elements citiesLinksSelector(Element root) {
+		return root.select("div.content div#state_links>ul>li>a[href]");
+	}
+
+	@Override
+	public Element pagesCountSelector(Element root) {
+		return root.select("div#search_results_container div.pagination>h2").first();
+	}
+
+	@Override
+	public int extractPagesCount(Element e) {
+		String text = e.text().trim();
+		return Integer.parseInt(text.substring(text.lastIndexOf(" ") + 1, text.length()));
+	}
+
+	@Override
+	public String pageNumberHttpQuery() {
+		return "?page=";
+	}
+
+	@Override
+	public Elements singleItemBaseInfoSelector(Element root) {
+		return root.select("div#search_results_container div#search_results div.result");
+	}
+
+	@Override
+	public Element itemNameSelector(Element root) {
+		return root.select("div.listing_details .listing_name>a[href]").first();
+	}
+
+	@Override
+	public String extractName(Element e) {
+		return e.text().trim();
+	}
+
+	@Override
+	public Element itemLocalitySelector(Element root) {
+		return root.select("div.listing_details .listing_location").first();
+	}
+
+	@Override
+	public String extractLocality(Element e) {
+		return e.text().split(",")[0].trim();
+	}
+
+	@Override
+	public Element itemRegionSelector(Element root) {
+		return root.select("div.listing_details .listing_location").first();
+	}
+
+	@Override
+	public String extractRegion(Element e) {
+		return statesMap.get(e.text().split(",")[1].trim().split(" ")[0].trim());
+	}
+
+	@Override
+	public Element itemPostalCodeSelector(Element root) {
+		return root.select("div.listing_details .listing_location").first();
+	}
+
+	@Override
+	public String extractPostalCode(Element e) {
+		return e.text().split(",")[1].trim().split(" ")[1].trim();
+	}
+
+	@Override
+	public Element itemPhoneNumberSelector(Element root) {
+		return root.select("div.listing_details .listing_phone").first();
+	}
+
+	@Override
+	public String extractPhoneNumber(Element e) {
+		if (e != null) {
+			return e.text().trim();
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemDetailsLinkSelector(Element root) {
+		return root.select("div.listing_details .listing_name>a[href]").first();
+	}
+
+	@Override
+	public Element itemStreetSelector(Element root) {
+		return root.select("div.content #summary_address").first();
+	}
+
+	@Override
+	public String extractStreet(Element e) {
+		return e.text().split("\\|")[0].trim();
+	}
+
+	@Override
+	public Element itemStyleSelector(Element root) {
+		return root.select("table.floorPlanTable tr:last-child>td:eq(0)").first();
+	}
+
+	@Override
+	public String extractStyle(Element e) {
+		if (e != null) {
+			return e.text().trim();
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemBedsCountSelector(Element root) {
+		Element beds = root.select("table.floorPlanTable tr:last-child>td:eq(1)").first();
+		if (beds == null) {
+			return root.select("div.content #summary_floorplan").first();
+		}
+		return beds;
+	}
+
+	@Override
+	public String extractBedsCount(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim();
 			} else {
-				// or not
-				Element floorplan = doc.select("div.content #summary_floorplan").first();
-				System.out.println("--Style: ");
-				if (floorplan != null) {
-					log.info("Apartment details found (floorplan).");
-					String[] tab = floorplan.text().split("\\|");
-					int size = tab.length;
-					System.out.println("--Beds: " + (size >= 1 ? tab[0].replaceAll("\\D", "") : ""));
-					System.out.println("--Bathrooms: " + (size >= 2 ? tab[1].replaceAll("\\D", "") : ""));
-					System.out.println("--Area [Sq. Ft.]: " + (size >= 3 ? tab[2].replaceAll("\\D", "") : ""));
-				}
-				Element price = doc.select("div.content #summary_price").first();
-				if (price != null) {
-					log.info("Apartment details found (price).");
-					String pr = price.text();
-					// we are sure that only one price is available
-					System.out.println("--Price: " + pr.replaceAll("[^\\$|\\.|\\d]", "").trim());
-					System.out.println("--Term: " + pr.replaceAll("\\$|,|\\d", "").trim());
-				}
-				Element deposit = doc.select("div.content #summary_other_pricing").first();
-				if (deposit != null) {
-					log.info("Apartment details found (deposit).");
-					String[] tab = deposit.text().split("\\|");
-					int size = tab.length;
-					System.out.println("--Deposit: " + (size >= 1 ? tab[0].split(" ")[0].replaceAll("[^\\$|\\.|\\d]", "") : ""));
-				}
+				String[] tab = e.text().split("\\|");
+				return tab.length >= 1 ? tab[0].replaceAll("\\D", "") : null;
 			}
-			System.out.println("--Features: ");
-			Elements features = doc.select("div#property_details ul>li");
-			if (features.size() > 0) {
-				log.info("Apartment features found.");
-				for (Element feature : features) {
-					System.out.println("----" + feature.text());
-				}
-			}
-			Element description = doc.select("div#property_details h3:containsOwn(description)~p").first();
-			if (description != null) {
-				log.info("Apartment description found.");
-				System.out.println("--Description: " + description.text());
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			e.printStackTrace();
 		}
+		return null;
+	}
+
+	@Override
+	public Element itemBathroomsCountSelector(Element root) {
+		Element bathrooms = root.select("table.floorPlanTable tr:last-child>td:eq(2)").first();
+		if (bathrooms == null) {
+			return root.select("div.content #summary_floorplan").first();
+		}
+		return bathrooms;
+	}
+
+	@Override
+	public String extractBathroomsCount(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim();
+			} else {
+				String[] tab = e.text().split("\\|");
+				return tab.length >= 2 ? tab[1].replaceAll("\\D", "") : null;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemAreaSelector(Element root) {
+		Element area = root.select("table.floorPlanTable tr:last-child>td:eq(4)").first();
+		if (area == null) {
+			return root.select("div.content #summary_floorplan").first();
+		}
+		return area;
+	}
+
+	@Override
+	public String extractArea(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim();
+			} else {
+				String[] tab = e.text().split("\\|");
+				return tab.length >= 3 ? tab[2].replaceAll("\\D", "") : null;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemPriceSelector(Element root) {
+		Element price = root.select("table.floorPlanTable tr:last-child>td:eq(5)").first();
+		if (price == null) {
+			return root.select("div.content #summary_price").first();
+		}
+		return price;
+	}
+
+	@Override
+	public String extractPrice(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim().replaceAll("[^\\$|\\.|\\d|-]", "");
+			} else {
+				return e.text().trim().replaceAll("[^\\$|\\.|\\d]", "");
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemTermSelector(Element root) {
+		Element term = root.select("table.floorPlanTable tr:last-child>td:eq(6)").first();
+		if (term == null) {
+			return root.select("div.content #summary_price").first();
+		}
+		return term;
+	}
+
+	@Override
+	public String extractTerm(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim();
+			} else {
+				return e.text().trim().replaceAll("\\$|,|\\d", "");
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemDepositSelector(Element root) {
+		Element deposit = root.select("table.floorPlanTable tr:last-child>td:eq(6)").first();
+		if (deposit == null) {
+			return root.select("div.content #summary_other_pricing").first();
+		}
+		return deposit;
+	}
+
+	@Override
+	public String extractDeposit(Element e) {
+		if (e != null) {
+			if (TD.equalsIgnoreCase(e.tagName())) {
+				return e.text().trim().replaceAll("[^\\$|\\.|\\d]", "");
+			} else {
+				String[] tab = e.text().trim().split("\\|");
+				return tab.length >= 1 ? tab[0].split(" ")[0].replaceAll("[^\\$|\\.|\\d]", "") : null;
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public Elements itemFeaturesSelector(Element root) {
+		return root.select("div#property_details ul>li");
+	}
+
+	@Override
+	public String extractFeature(Element e) {
+		if (e != null) {
+			return e.text().trim();
+		}
+		return null;
+	}
+
+	@Override
+	public Element itemDescriptionSelector(Element root) {
+		return root.select("div#property_details h3:containsOwn(description)~p").first();
+	}
+
+	@Override
+	public String extractDescription(Element e) {
+		if (e != null) {
+			return e.text().trim();
+		}
+		return null;
 	}
 }
