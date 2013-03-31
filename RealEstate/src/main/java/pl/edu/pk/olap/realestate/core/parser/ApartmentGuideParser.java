@@ -2,19 +2,20 @@ package pl.edu.pk.olap.realestate.core.parser;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.ParseException;
 
 import org.apache.log4j.Logger;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import pl.edu.pk.olap.realestate.config.ConfigurationConstants;
+import pl.edu.pk.olap.realestate.util.TextUtils;
 
 /**
  * @author b4rt3k
  * 
  */
 public class ApartmentGuideParser extends AbstractParser {
-
 	private static Logger log = Logger.getLogger(ApartmentGuideParser.class);
 
 	@Override
@@ -49,11 +50,14 @@ public class ApartmentGuideParser extends AbstractParser {
 
 	@Override
 	public int extractPagesCount(Element e) {
-		try {
-			return Integer.parseInt(new URL(e.attr("abs:href")).getQuery().split("=")[1]);
-		} catch (NumberFormatException | MalformedURLException e1) {
-			throw new RuntimeException(e1);
+		if (e != null) {
+			try {
+				return Integer.parseInt(new URL(e.attr("abs:href")).getQuery().split("=")[1]);
+			} catch (NumberFormatException | MalformedURLException e1) {
+				return 1;
+			}
 		}
+		return 1;
 	}
 
 	@Override
@@ -74,7 +78,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractName(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -87,7 +91,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractLocality(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -100,7 +104,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractRegion(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -113,7 +117,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractPostalCode(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -126,7 +130,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractPhoneNumber(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -144,7 +148,8 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractStreet(Element e) {
 		if (e != null) {
-			return e.text().trim().replaceAll(",", "");
+			String street = TextUtils.emptyStringToNull(e.text().replaceAll(",", ""));
+			return street.endsWith(",") ? street.substring(0, street.length() - 1) : street;
 		}
 		return null;
 	}
@@ -157,7 +162,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractStyle(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -170,7 +175,12 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractBedsCount(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			try {
+				return TextUtils.formatNumber(e.text(), 0);
+			} catch (ParseException e1) {
+				this.getLogger().error("Cannot parse beds count to number.", e1);
+				return null;
+			}
 		}
 		return null;
 	}
@@ -183,7 +193,12 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractBathroomsCount(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			try {
+				return TextUtils.formatNumber(e.text(), 0);
+			} catch (ParseException e1) {
+				this.getLogger().error("Cannot parse bathrooms count to number.", e1);
+				return null;
+			}
 		}
 		return null;
 	}
@@ -196,7 +211,12 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractArea(Element e) {
 		if (e != null) {
-			return e.text().trim().replaceAll("\\D", "");
+			try {
+				return TextUtils.formatNumber(e.text(), 0);
+			} catch (ParseException e1) {
+				this.getLogger().error("Cannot parse area to number.", e1);
+				return null;
+			}
 		}
 		return null;
 	}
@@ -209,7 +229,21 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractPrice(Element e) {
 		if (e != null) {
-			return e.text().trim().replaceAll("[^\\$|\\.|\\d|-]", "");
+			String[] tab = e.text().split("-");
+			if (tab.length > 1) {
+				try {
+					return TextUtils.formatNumber(tab[1], 2);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse price to number.", e1);
+					return null;
+				}
+			}
+			try {
+				return TextUtils.formatNumber(tab[0], 2);
+			} catch (ParseException e1) {
+				this.getLogger().error("Cannot parse price to number.", e1);
+				return null;
+			}
 		}
 		return null;
 	}
@@ -222,7 +256,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractTerm(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text().toLowerCase());
 		}
 		return null;
 	}
@@ -235,7 +269,12 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractDeposit(Element e) {
 		if (e != null) {
-			return e.text().trim().replaceAll("[^\\$|\\.|\\d]", "");
+			try {
+				return TextUtils.formatNumber(e.text(), 2);
+			} catch (ParseException e1) {
+				this.getLogger().error("Cannot parse deposit to number.", e1);
+				return null;
+			}
 		}
 		return null;
 	}
@@ -248,7 +287,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractFeature(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -261,7 +300,7 @@ public class ApartmentGuideParser extends AbstractParser {
 	@Override
 	public String extractDescription(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}

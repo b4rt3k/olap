@@ -1,5 +1,6 @@
 package pl.edu.pk.olap.realestate.core.parser;
 
+import java.text.ParseException;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
@@ -8,16 +9,16 @@ import org.jsoup.select.Elements;
 
 import pl.edu.pk.olap.realestate.config.ConfigurationConstants;
 import pl.edu.pk.olap.realestate.util.StatesAbbreviationsMap;
+import pl.edu.pk.olap.realestate.util.TextUtils;
 
-// jeœli wszystkie parsery bêd¹ mia³y podobn¹ strukturê, to zrobiæ klasê abstrakcyjn¹, a w podklasach podmieniaæ tylko selektory!!!
-// w parsePage i parseItem zprawdzac wszystkie selektory czy znajduj¹ odpowiednie elementy na stronie
-// ujednoliciæ wielkoœæ znakó (tolowercase)
 // regu³y dla price i deposit zrobiæ w metodzie (klasy abstract parser albo xxxUtils, bo liczbowy format trzeba ujednoliciæ NumberFormat)
-// wszystko trimowaæ
 // problem z dolarem przed cen¹ i np 400 i 400.00 (wszystkie liczby maj¹ problem z kropk¹) oraz np $400-$600, czyli pauza
-// cenê liczyæ œredni¹
 // poprawiæ wyci¹ganie street z rentals
-// zrobiæ metodê która zamienia puste stringi na nulle
+// dane na temat community i schools  braæ z pierwszego elementu (w parse page jeœli parsujemy pierwszy item to wo³aæ parseSchools i parse Demographics)
+// rozró¿niæ kupno i sprzeda¿
+// dodaæ timestamp (to chyba janek zrobi)
+// ka¿dy parser pisze do swojego pliku.
+// parsowanie ceny wyodrêbniæ do nowej metody (a nawet u¿ycie metody formatNumber)
 /**
  * 
  * @author b4rt3k
@@ -82,7 +83,10 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public String extractName(Element e) {
-		return e.text().trim();
+		if (e != null) {
+			return TextUtils.emptyStringToNull(e.text());
+		}
+		return null;
 	}
 
 	@Override
@@ -92,7 +96,10 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public String extractLocality(Element e) {
-		return e.text().split(",")[0].trim();
+		if (e != null) {
+			return TextUtils.emptyStringToNull(e.text().split(",")[0]);
+		}
+		return null;
 	}
 
 	@Override
@@ -102,7 +109,17 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public String extractRegion(Element e) {
-		return statesMap.get(e.text().split(",")[1].trim().split(" ")[0].trim());
+		if (e != null) {
+			String tab[] = e.text().split(",");
+			if (tab.length > 1) {
+				String[] innerTab = tab[1].trim().split(" ");
+				if (innerTab.length > 0) {
+					String state = TextUtils.emptyStringToNull(innerTab[0]);
+					return state != null ? statesMap.get(state) : state;
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -112,7 +129,17 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public String extractPostalCode(Element e) {
-		return e.text().split(",")[1].trim().split(" ")[1].trim();
+		if (e != null) {
+			String tab[] = e.text().split(",");
+			if (tab.length > 1) {
+				String[] innerTab = tab[1].trim().split(" ");
+				if (innerTab.length > 1) {
+					String postal = TextUtils.emptyStringToNull(innerTab[1]);
+					return postal;
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -123,7 +150,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractPhoneNumber(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -140,7 +167,13 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public String extractStreet(Element e) {
-		return e.text().split("\\|")[0].trim();
+		if (e != null) {
+			String tab[] = e.text().split("\\|");
+			if (tab.length > 0) {
+				return TextUtils.emptyStringToNull(tab[0]);
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -151,7 +184,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractStyle(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -169,10 +202,22 @@ public class RentalsParser extends AbstractParser {
 	public String extractBedsCount(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim();
+				try {
+					return TextUtils.formatNumber(e.text(), 0);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse beds count to number.", e1);
+					return null;
+				}
 			} else {
 				String[] tab = e.text().split("\\|");
-				return tab.length >= 1 ? tab[0].replaceAll("\\D", "") : null;
+				if (tab.length > 0) {
+					try {
+						return TextUtils.formatNumber(tab[0], 0);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse beds count to number.", e1);
+						return null;
+					}
+				}
 			}
 		}
 		return null;
@@ -191,10 +236,22 @@ public class RentalsParser extends AbstractParser {
 	public String extractBathroomsCount(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim();
+				try {
+					return TextUtils.formatNumber(e.text(), 0);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse baths count to number.", e1);
+					return null;
+				}
 			} else {
 				String[] tab = e.text().split("\\|");
-				return tab.length >= 2 ? tab[1].replaceAll("\\D", "") : null;
+				if (tab.length > 1) {
+					try {
+						return TextUtils.formatNumber(tab[1], 0);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse baths count to number.", e1);
+						return null;
+					}
+				}
 			}
 		}
 		return null;
@@ -213,10 +270,22 @@ public class RentalsParser extends AbstractParser {
 	public String extractArea(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim();
+				try {
+					return TextUtils.formatNumber(e.text(), 0);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse area to number.", e1);
+					return null;
+				}
 			} else {
 				String[] tab = e.text().split("\\|");
-				return tab.length >= 3 ? tab[2].replaceAll("\\D", "") : null;
+				if (tab.length > 2) {
+					try {
+						return TextUtils.formatNumber(tab[2], 0);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse area to number.", e1);
+						return null;
+					}
+				}
 			}
 		}
 		return null;
@@ -226,7 +295,7 @@ public class RentalsParser extends AbstractParser {
 	public Element itemPriceSelector(Element root) {
 		Element price = root.select("table.floorPlanTable tr:last-child>td:eq(5)").first();
 		if (price == null) {
-			return root.select("div.content #summary_price").first();
+			return root.select("div.content #summary_price>strong").first();
 		}
 		return price;
 	}
@@ -235,9 +304,37 @@ public class RentalsParser extends AbstractParser {
 	public String extractPrice(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim().replaceAll("[^\\$|\\.|\\d|-]", "");
+				String[] tab = e.text().split("-");
+				if (tab.length > 1) {
+					try {
+						return TextUtils.formatNumber(tab[1], 2);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse price to number.", e1);
+						return null;
+					}
+				}
+				try {
+					return TextUtils.formatNumber(tab[0], 2);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse price to number.", e1);
+					return null;
+				}
 			} else {
-				return e.text().trim().replaceAll("[^\\$|\\.|\\d]", "");
+				String[] tab = e.text().split("-");
+				if (tab.length > 1) {
+					try {
+						return TextUtils.formatNumber(tab[1], 2);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse price to number.", e1);
+						return null;
+					}
+				}
+				try {
+					return TextUtils.formatNumber(tab[0], 2);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse price to number.", e1);
+					return null;
+				}
 			}
 		}
 		return null;
@@ -256,9 +353,9 @@ public class RentalsParser extends AbstractParser {
 	public String extractTerm(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim();
+				return TextUtils.emptyStringToNull(e.text().toLowerCase());
 			} else {
-				return e.text().trim().replaceAll("\\$|,|\\d", "");
+				return TextUtils.emptyStringToNull(TextUtils.deleteNumber(e.text().toLowerCase()));
 			}
 		}
 		return null;
@@ -266,9 +363,9 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public Element itemDepositSelector(Element root) {
-		Element deposit = root.select("table.floorPlanTable tr:last-child>td:eq(6)").first();
+		Element deposit = root.select("table.floorPlanTable tr:last-child>td:eq(7)").first();
 		if (deposit == null) {
-			return root.select("div.content #summary_other_pricing").first();
+			return root.select("div.content #summary_other_pricing>strong").first();
 		}
 		return deposit;
 	}
@@ -277,10 +374,19 @@ public class RentalsParser extends AbstractParser {
 	public String extractDeposit(Element e) {
 		if (e != null) {
 			if (TD.equalsIgnoreCase(e.tagName())) {
-				return e.text().trim().replaceAll("[^\\$|\\.|\\d]", "");
+				try {
+					return TextUtils.formatNumber(e.text(), 2);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse deposit to number.", e1);
+					return null;
+				}
 			} else {
-				String[] tab = e.text().trim().split("\\|");
-				return tab.length >= 1 ? tab[0].split(" ")[0].replaceAll("[^\\$|\\.|\\d]", "") : null;
+				try {
+					return TextUtils.formatNumber(e.text(), 2);
+				} catch (ParseException e1) {
+					this.getLogger().error("Cannot parse deposit to number.", e1);
+					return null;
+				}
 			}
 		}
 		return null;
@@ -294,7 +400,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractFeature(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}
@@ -307,7 +413,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractDescription(Element e) {
 		if (e != null) {
-			return e.text().trim();
+			return TextUtils.emptyStringToNull(e.text());
 		}
 		return null;
 	}

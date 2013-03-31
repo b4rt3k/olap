@@ -17,7 +17,7 @@ import pl.edu.pk.olap.realestate.config.ConfigurationConstants;
 public abstract class AbstractParser implements HttpParser {
 	@Autowired
 	protected ConfigReader reader;
-	private int timeout;
+	protected int timeout;
 
 	public abstract Logger getLogger();
 
@@ -320,7 +320,7 @@ public abstract class AbstractParser implements HttpParser {
 		try {
 			doc = Jsoup.connect(reader.getProperty(getUrl())).timeout(timeout).userAgent("Mozilla").get();
 			Elements links = statesLinksSelector(doc);
-			if (links.size() > 0) {
+			if (links != null && links.size() > 0) {
 				getLogger().info("States links found.");
 				for (Element link : links) {
 					parseState(link.attr("abs:href"), link.text());
@@ -332,7 +332,7 @@ public abstract class AbstractParser implements HttpParser {
 		}
 	}
 
-	private void parseState(String url, String stateName) {
+	protected void parseState(String url, String stateName) {
 		getLogger().info("Parsing state: " + stateName);
 		System.out.println("------------------------------------------");
 		System.out.println(stateName);
@@ -341,7 +341,7 @@ public abstract class AbstractParser implements HttpParser {
 		try {
 			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Elements links = citiesLinksSelector(doc);
-			if (links.size() > 0) {
+			if (links != null && links.size() > 0) {
 				getLogger().info("Cities links found.");
 				for (Element link : links) {
 					parseCity(link.attr("abs:href"), link.text());
@@ -354,16 +354,15 @@ public abstract class AbstractParser implements HttpParser {
 
 	}
 
-	private void parseCity(String url, String cityName) {
+	protected void parseCity(String url, String cityName) {
 		getLogger().info("Parsing city: " + cityName);
+		System.out.println(cityName);
 		int pages = 1;
-		boolean resultsFound = false;
 		Document doc = null;
 		try {
 			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Element elem = pagesCountSelector(doc);
 			if (elem != null) {
-				resultsFound = true;
 				pages = extractPagesCount(elem);
 				getLogger().info("Pages count found: " + pages);
 			}
@@ -372,23 +371,26 @@ public abstract class AbstractParser implements HttpParser {
 			e.printStackTrace();
 		}
 
-		if (resultsFound) {
-			for (int i = 0; i < pages; i++) {
-				parsePage(url + pageNumberHttpQuery() + (i + 1), cityName, (i + 1));
+		for (int i = 0; i < pages; i++) {
+			if (!url.endsWith("/")) {
+				url += "/";
 			}
+			parsePage(url + pageNumberHttpQuery() + (i + 1), cityName, (i + 1));
 		}
+
 	}
 
-	private void parsePage(String url, String city, int page) {
+	protected void parsePage(String url, String city, int page) {
 		getLogger().info("Parsing page: " + page + ", city: " + city);
 		Document doc = null;
 		try {
 			doc = Jsoup.connect(url).timeout(timeout).userAgent("Mozilla").get();
 			Elements items = singleItemBaseInfoSelector(doc);
 			int index = 0;
-			if (items.size() > 0) {
+			if (items != null && items.size() > 0) {
 				getLogger().info("Apartments base info found.");
 				for (Element item : items) {
+					System.out.println("--Portal: " + getPortalName());
 					System.out.println("--Name: " + extractName(itemNameSelector(item)));
 					System.out.println("--Reigon: " + extractRegion(itemRegionSelector(item)));
 					System.out.println("--Locality: " + extractLocality(itemLocalitySelector(item)));
@@ -404,7 +406,7 @@ public abstract class AbstractParser implements HttpParser {
 		}
 	}
 
-	private void parseItem(String url, int index) {
+	protected void parseItem(String url, int index) {
 		getLogger().info("Parsing item: " + index);
 		Document doc = null;
 		try {
@@ -420,7 +422,7 @@ public abstract class AbstractParser implements HttpParser {
 			System.out.println("--Deposit: " + extractDeposit(itemDepositSelector(doc)));
 			System.out.println("--Features: ");
 			Elements features = itemFeaturesSelector(doc);
-			if (features.size() > 0) {
+			if (features != null && features.size() > 0) {
 				getLogger().info("Apartment features found.");
 				for (Element feature : features) {
 					System.out.println("----" + extractFeature(feature));
