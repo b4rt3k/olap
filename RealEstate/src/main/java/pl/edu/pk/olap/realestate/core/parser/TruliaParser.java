@@ -323,7 +323,7 @@ public class TruliaParser extends AbstractParser {
 	public String extractFeature(Element e) {
 		if (e != null) {
 			/** replace is needed because of weird characters inside list items */
-			return TextUtils.emptyStringToNull(e.text().replaceAll("•", ""));
+			return TextUtils.emptyStringToNull(e.text().replaceAll("•\u00a0", ""));
 		}
 		return null;
 	}
