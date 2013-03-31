@@ -61,8 +61,8 @@ public class ApartmentGuideParser extends AbstractParser {
 	}
 
 	@Override
-	public String pageNumberHttpQuery() {
-		return "?page=";
+	public String pageNumberHttpQuery(int page) {
+		return "?page=" + page;
 	}
 
 	@Override

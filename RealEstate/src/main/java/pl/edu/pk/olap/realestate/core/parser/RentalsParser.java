@@ -28,7 +28,6 @@ public class RentalsParser extends AbstractParser {
 
 	private static Logger log = Logger.getLogger(RentalsParser.class);
 	private static Map<String, String> statesMap = new StatesAbbreviationsMap();
-	private static final String TD = "td";
 
 	@Override
 	public Logger getLogger() {
@@ -62,13 +61,20 @@ public class RentalsParser extends AbstractParser {
 
 	@Override
 	public int extractPagesCount(Element e) {
-		String text = e.text().trim();
-		return Integer.parseInt(text.substring(text.lastIndexOf(" ") + 1, text.length()));
+		if (e != null) {
+			String text = e.text().trim();
+			try {
+				return Integer.parseInt(text.substring(text.lastIndexOf(" ") + 1, text.length()));
+			} catch (NumberFormatException e1) {
+				return 1;
+			}
+		}
+		return 1;
 	}
 
 	@Override
-	public String pageNumberHttpQuery() {
-		return "?page=";
+	public String pageNumberHttpQuery(int page) {
+		return "?page=" + page;
 	}
 
 	@Override
@@ -201,7 +207,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractBedsCount(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				try {
 					return TextUtils.formatNumber(e.text(), 0);
 				} catch (ParseException e1) {
@@ -235,7 +241,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractBathroomsCount(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				try {
 					return TextUtils.formatNumber(e.text(), 0);
 				} catch (ParseException e1) {
@@ -269,7 +275,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractArea(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				try {
 					return TextUtils.formatNumber(e.text(), 0);
 				} catch (ParseException e1) {
@@ -303,7 +309,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractPrice(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				String[] tab = e.text().split("-");
 				if (tab.length > 1) {
 					try {
@@ -313,11 +319,13 @@ public class RentalsParser extends AbstractParser {
 						return null;
 					}
 				}
-				try {
-					return TextUtils.formatNumber(tab[0], 2);
-				} catch (ParseException e1) {
-					this.getLogger().error("Cannot parse price to number.", e1);
-					return null;
+				if (tab.length > 0) {
+					try {
+						return TextUtils.formatNumber(tab[0], 2);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse price to number.", e1);
+						return null;
+					}
 				}
 			} else {
 				String[] tab = e.text().split("-");
@@ -329,11 +337,13 @@ public class RentalsParser extends AbstractParser {
 						return null;
 					}
 				}
-				try {
-					return TextUtils.formatNumber(tab[0], 2);
-				} catch (ParseException e1) {
-					this.getLogger().error("Cannot parse price to number.", e1);
-					return null;
+				if (tab.length > 0) {
+					try {
+						return TextUtils.formatNumber(tab[0], 2);
+					} catch (ParseException e1) {
+						this.getLogger().error("Cannot parse price to number.", e1);
+						return null;
+					}
 				}
 			}
 		}
@@ -352,7 +362,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractTerm(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				return TextUtils.emptyStringToNull(e.text().toLowerCase());
 			} else {
 				return TextUtils.emptyStringToNull(TextUtils.deleteNumber(e.text().toLowerCase()));
@@ -373,7 +383,7 @@ public class RentalsParser extends AbstractParser {
 	@Override
 	public String extractDeposit(Element e) {
 		if (e != null) {
-			if (TD.equalsIgnoreCase(e.tagName())) {
+			if ("td".equalsIgnoreCase(e.tagName())) {
 				try {
 					return TextUtils.formatNumber(e.text(), 2);
 				} catch (ParseException e1) {

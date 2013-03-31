@@ -61,8 +61,8 @@ public class RealtorParser extends AbstractParser {
 	}
 
 	@Override
-	public String pageNumberHttpQuery() {
-		return "pg-";
+	public String pageNumberHttpQuery(int page) {
+		return "pg-" + page;
 	}
 
 	@Override

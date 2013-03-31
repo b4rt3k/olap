@@ -70,7 +70,7 @@ public abstract class AbstractParser implements HttpParser {
 	 * 
 	 * @return
 	 */
-	public abstract String pageNumberHttpQuery();
+	public abstract String pageNumberHttpQuery(int page);
 
 	/**
 	 * Method return items on paginated list
@@ -375,7 +375,7 @@ public abstract class AbstractParser implements HttpParser {
 			if (!url.endsWith("/")) {
 				url += "/";
 			}
-			parsePage(url + pageNumberHttpQuery() + (i + 1), cityName, (i + 1));
+			parsePage(url + pageNumberHttpQuery(i + 1), cityName, (i + 1));
 		}
 
 	}
@@ -392,11 +392,16 @@ public abstract class AbstractParser implements HttpParser {
 				for (Element item : items) {
 					System.out.println("--Portal: " + getPortalName());
 					System.out.println("--Name: " + extractName(itemNameSelector(item)));
-					System.out.println("--Reigon: " + extractRegion(itemRegionSelector(item)));
-					System.out.println("--Locality: " + extractLocality(itemLocalitySelector(item)));
-					System.out.println("--Postal Code: " + extractPostalCode(itemPostalCodeSelector(item)));
-					System.out.println("--Phone Number: " + extractPhoneNumber(itemPhoneNumberSelector(item)));
-					parseItem(itemDetailsLinkSelector(item).attr("abs:href"), index++);
+					// System.out.println("--Reigon: " +
+					// extractRegion(itemRegionSelector(item)));
+					// System.out.println("--Locality: " +
+					// extractLocality(itemLocalitySelector(item)));
+					// System.out.println("--Postal Code: " +
+					// extractPostalCode(itemPostalCodeSelector(item)));
+					// System.out.println("--Phone Number: " +
+					// extractPhoneNumber(itemPhoneNumberSelector(item)));
+					// parseItem(itemDetailsLinkSelector(item).attr("abs:href"),
+					// index++);
 					System.out.println();
 				}
 			}

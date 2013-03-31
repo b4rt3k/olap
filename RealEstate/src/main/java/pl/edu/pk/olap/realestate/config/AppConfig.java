@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import pl.edu.pk.olap.realestate.core.parser.ApartmentGuideParser;
 import pl.edu.pk.olap.realestate.core.parser.RealtorParser;
 import pl.edu.pk.olap.realestate.core.parser.RentalsParser;
+import pl.edu.pk.olap.realestate.core.parser.TruliaParser;
 
 /**
  * @author b4rt3k
@@ -32,5 +33,10 @@ public class AppConfig {
 	@Bean
 	public RealtorParser realtorParser() {
 		return new RealtorParser();
+	}
+
+	@Bean
+	public TruliaParser truliaParser() {
+		return new TruliaParser();
 	}
 }

@@ -8,7 +8,7 @@ public class TextUtils {
 		if (input.trim().isEmpty()) {
 			return null;
 		}
-		return input;
+		return input.trim();
 	}
 
 	public static String formatNumber(String in, int fractionDigits) throws ParseException {
